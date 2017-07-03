@@ -12,8 +12,6 @@ import json
 
 name = sys.argv[1]
 
-print("Hello", name)
-
 doc = minidom.parse(name);
 words = doc.getElementsByTagName('Table')
 
@@ -26,8 +24,6 @@ for i in words:
     top = i.getAttribute('y0')
     right = i.getAttribute('x1')
     bottom = i.getAttribute('y1')
-    print(left, top, right, bottom, word_text)
-    data_table['word'] = word_text
     data_table['left'] = int(left)
     data_table['top'] = int(top)
     data_table['right'] = int(right)

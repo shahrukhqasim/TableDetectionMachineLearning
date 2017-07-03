@@ -12,8 +12,6 @@ import json
 
 name = sys.argv[1]
 
-print("Hello", name)
-
 doc = minidom.parse(name);
 words = doc.getElementsByTagName('word')
 
