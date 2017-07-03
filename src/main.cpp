@@ -244,6 +244,7 @@ int main(int argc, char**argv) {
 
 
     string withoutExtension = docproc::utility::getFileNameWithoutExtension(imageFileName);
+    string justName = withoutExtension.substr(withoutExtension.find_last_of('/')+1);
     string fileNameFeatures = withoutExtension + ".json";
 
     imwrite(withoutExtension+"_rects.png", imageRgb);
@@ -268,6 +269,7 @@ int main(int argc, char**argv) {
         singleWordData["above"] = i.distanceAboveY;
         singleWordData["below"] = i.distanceBelowY;
         singleWordData["is_table"] = i.isTable;
+        singleWordData["image_id"] = justName;
 
         outFileWordData[ii] = singleWordData;
 
