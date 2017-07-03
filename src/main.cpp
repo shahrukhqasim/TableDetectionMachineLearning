@@ -35,7 +35,6 @@ struct Feature {
 };
 
 double scale(int max, int value) {
-    cout<<value<<endl;
     return value;//min(1.00,((double)value)/max);
 }
 
@@ -120,8 +119,6 @@ vector<Feature> findFeatures(std::vector<std::string> words, std::vector<Rect> w
         featureVector.distancePrevX = leftFound ? scale(imageWidth, i.x - left.x - left.width) : -1;
         featureVector.distanceNextX = rightFound ? scale(imageWidth, right.x - i.x - i.width) : -1;
         featureVector.distanceBelowY = lowerFound ? scale(imageHeight, lower.y - i.y - i.height) : -1;
-//        cout<<"U: "<<upper.y<< " "<<upper.height << " " << i.y << " " << i.height << endl;
-        cout << "U: " << upper << " - " << i <<endl;
         featureVector.distanceAboveY = upperFound ? scale(imageHeight, i.y - upper.y - upper.height) : -1;
 
         wordFeatures.push_back(featureVector);
@@ -180,7 +177,7 @@ int main(int argc, char**argv) {
     cvtColor(image, image2, CV_GRAY2BGR);
 
     for (auto i : bboxes) {
-        rectangle(image2, i, Scalar(0,0,255), CV_FILLED, 8, 0);
+        rectangle(image2, i, Scalar(0,0,255), 3, 8, 0);
     }
 
 
