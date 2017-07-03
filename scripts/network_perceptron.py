@@ -110,4 +110,4 @@ def train_and_get_accuracy(X,Y,X_t,Y_t,X_v, Y_v):
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
         acc=accuracy.eval({x: X_t, y: Y_t, kp: 1});
         print("Accuracy:", acc)
-        return acc
+        return tf.argmax(pred, 1).eval({x: X_t, y: Y_t, kp: 1})

@@ -23,6 +23,7 @@ def loadJson(path):
         num_word = len(data)
         x = np.zeros((num_word, 10))
         y = np.zeros((num_word, 2))
+        id = []
         for i in range(len(data)):
             data_one = data[i]
             left = data_one['left']
@@ -36,6 +37,7 @@ def loadJson(path):
             width = data_one['width']
             height = data_one['height']
             is_table = data_one['is_table']
+            idd = data_one['image_id']
             xx = np.zeros(10);
             xx[0] = left
             xx[1] = top
@@ -51,16 +53,18 @@ def loadJson(path):
             yy = np.zeros(2)
             yy[int(is_table)] = 1
             y[i] = yy
+            id.append(idd)
             # y[i] = yy
-        return x,y
+        return x, y, id
 
 
 def load_data(dir):
     init = False
+    ID = []
     for i in os.listdir(dir):
         if not i.endswith('json'):
             continue
-        x, y = loadJson(dir + '/' + i)
+        x, y, id = loadJson(dir + '/' + i)
         if not init:
             X = x
             Y = y
@@ -68,5 +72,6 @@ def load_data(dir):
         else:
             X = np.append(X, x, axis=0)
             Y = np.append(Y, y, axis=0)
+            ID = ID + id
     print(np.shape(X), np.shape(Y))
-    return X,Y
+    return X, Y, ID
