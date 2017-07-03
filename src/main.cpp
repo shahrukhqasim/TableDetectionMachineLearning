@@ -8,6 +8,7 @@
 #include <docproc/segment/segment.h>
 #include <docproc/clean/clean.h>
 #include <docproc/utility/utility.h>
+#include <json/json/json.h>
 
 using namespace std;
 using namespace cv;
@@ -21,7 +22,7 @@ bool verticalOverlap(Rect i, Rect j) {
     return max(0, std::min(i.x + i.width, j.x + j.width) - std::max(i.x, j.x)) > 0;
 }
 
-struct Feature {
+struct WordData {
     double left;
     double top;
     double right;
@@ -32,14 +33,15 @@ struct Feature {
     double distanceNextX;
     double distanceAboveY;
     double distanceBelowY;
+    bool isTable = false;
 };
 
 double scale(int max, int value) {
     return value;//min(1.00,((double)value)/max);
 }
 
-vector<Feature> findFeatures(std::vector<std::string> words, std::vector<Rect> wordBoxes, int imageWidth, int imageHeight) {
-    vector<Feature> wordFeatures;
+vector<WordData> findFeatures(std::vector<std::string> words, std::vector<Rect> wordBoxes, int imageWidth, int imageHeight) {
+    vector<WordData> wordFeatures;
 
     for (int ii = 0; ii < wordBoxes.size(); ii++) {
         Rect i = wordBoxes[ii];
@@ -109,19 +111,19 @@ vector<Feature> findFeatures(std::vector<std::string> words, std::vector<Rect> w
             }
         }
 
-        Feature featureVector;
-        featureVector.left = scale(imageWidth, i.x);
-        featureVector.top = scale(imageHeight, i.y);
-        featureVector.right = scale(imageWidth, i.x + i.width);
-        featureVector.bottom = scale(imageHeight, i.y + i.height);
-        featureVector.width = scale(imageWidth, i.width);
-        featureVector.height = scale(imageHeight, i.height);
-        featureVector.distancePrevX = leftFound ? scale(imageWidth, i.x - left.x - left.width) : -1;
-        featureVector.distanceNextX = rightFound ? scale(imageWidth, right.x - i.x - i.width) : -1;
-        featureVector.distanceBelowY = lowerFound ? scale(imageHeight, lower.y - i.y - i.height) : -1;
-        featureVector.distanceAboveY = upperFound ? scale(imageHeight, i.y - upper.y - upper.height) : -1;
+        WordData wordData;
+        wordData.left = scale(imageWidth, i.x);
+        wordData.top = scale(imageHeight, i.y);
+        wordData.right = scale(imageWidth, i.x + i.width);
+        wordData.bottom = scale(imageHeight, i.y + i.height);
+        wordData.width = scale(imageWidth, i.width);
+        wordData.height = scale(imageHeight, i.height);
+        wordData.distancePrevX = leftFound ? scale(imageWidth, i.x - left.x - left.width) : -1;
+        wordData.distanceNextX = rightFound ? scale(imageWidth, right.x - i.x - i.width) : -1;
+        wordData.distanceBelowY = lowerFound ? scale(imageHeight, lower.y - i.y - i.height) : -1;
+        wordData.distanceAboveY = upperFound ? scale(imageHeight, i.y - upper.y - upper.height) : -1;
 
-        wordFeatures.push_back(featureVector);
+        wordFeatures.push_back(wordData);
     }
 
     return wordFeatures;
@@ -129,75 +131,151 @@ vector<Feature> findFeatures(std::vector<std::string> words, std::vector<Rect> w
 
 int main(int argc, char**argv) {
     // Read the image
-    if(argc!=2) {
+    if(argc!=4) {
         cout<<"Improper arguments \n";
         return -1;
     }
 
     string imageFileName = argv[1];
+    string ocrFileName = argv[2];
+    string gtFileName = argv[3];
+
+    cout<<"Files:"<<endl;
+    cout<<imageFileName<<endl;
+    cout<<ocrFileName<<endl;
+    cout<<gtFileName<<endl<<endl;
+
     Mat image;
     image = imread(imageFileName, 0);
     Mat imageRgb = imread(imageFileName, 1);
 
+    int imageHeight = image.rows;
+    int imageWidth = image.cols;
+
     // Binarize the image
     Mat binarizedImage;
     Mat temp;
-    docproc::binarize::binarizeBG(image, temp, binarizedImage);
+//    docproc::binarize::binarizeBG(image, temp, binarizedImage);
 
-    //Tesseract Initialization
-    tesseract::TessBaseAPI *api = new tesseract::TessBaseAPI();
-    if (api->Init(NULL, "eng", tesseract::OEM_TESSERACT_ONLY)) {
-        cerr << "Error in API initialization ";
-        exit(-1);
-    }
-
-    //Set image to tesseract object
-    api->SetImage((uchar *) binarizedImage.data, binarizedImage.size().width, binarizedImage.size().height,
-                  binarizedImage.channels(), binarizedImage.step1());
-    api->Recognize(0);
-    tesseract::ResultIterator *ri = api->GetIterator();
 
     std::vector<std::string> words;
     std::vector<Rect> bboxes;
 
-    // Get bounding boxes for each word in image
-    if (ri != 0) {
-        do {
-            Rect bbox_Coordinates;
-            string word =  ri->GetUTF8Text(tesseract::RIL_WORD);
-            int left, top, right, bottom;
-            ri->BoundingBox(tesseract::RIL_WORD, &left, &top, &right, &bottom);
+    {
+        Json::Value json;
+        ifstream jsonStream(ocrFileName);
+        jsonStream >> json;
+        cout<<json.size()<<endl;
+        for (int i = 0 ; i < json.size(); i++) {
+            Json::Value wordJson = json[i];
+//            cout<<wordJson.asString()<<endl;
+            string word = wordJson["word"].asString();
+            string left = wordJson["left"].asString();
+            string top = wordJson["top"].asString();
+            string right = wordJson["right"].asString();
+            string bottom = wordJson["bottom"].asString();
+
+            cout<<word<<" "<<endl;
+            int iLeft = stoi(left);
+            int iTop = stoi(top);
+            int iRight = stoi(right);
+            int iBottom = stoi(bottom);
+
+            // Pdf coordinates
+            iBottom = imageHeight - iBottom;
+            iTop = imageHeight - iTop;
+
             words.push_back(word);
-            bboxes.push_back(Rect(left,top,right-left,bottom-top));
-
-        } while (ri->Next(tesseract::RIL_WORD));
+            bboxes.push_back(Rect(iLeft,iTop,iRight-iLeft,iBottom-iTop));
+//            cout<<"Hello :)" << Rect(iLeft,iTop,iRight-iLeft,iBottom-iTop) <<endl;
+        }
     }
+    std::vector<Rect> tableBoxes;
+    {
+        Json::Value json;
+        ifstream jsonStream(gtFileName);
+        jsonStream >> json;
+        cout<<json.size()<<endl;
+        for (int i = 0 ; i < json.size(); i++) {
+            Json::Value tableJson = json[i];
+//            cout<<wordJson.asString()<<endl;
+            string left = tableJson["left"].asString();
+            string top = tableJson["top"].asString();
+            string right = tableJson["right"].asString();
+            string bottom = tableJson["bottom"].asString();
 
-    Mat image2;
-    cvtColor(image, image2, CV_GRAY2BGR);
+            int iLeft = stoi(left);
+            int iTop = stoi(top);
+            int iRight = stoi(right);
+            int iBottom = stoi(bottom);
 
+            // Pdf coordinates
+//            iBottom = imageHeight - iBottom;
+//            iTop = imageHeight - iTop;
+
+            tableBoxes.push_back(Rect(iLeft,iTop,iRight-iLeft,iBottom-iTop));
+            cout<<"Oh its a table"<<endl;
+//            cout<<"Hello :)" << Rect(iLeft,iTop,iRight-iLeft,iBottom-iTop) <<endl;
+        }
+    }
+    vector<WordData> wordData = findFeatures(words, bboxes, image.cols, image.rows);
+
+    for (int i = 0; i < words.size(); i++) {
+        Rect rect = bboxes[i];
+        for (auto j : tableBoxes) {
+            if ((rect & j).area() > 0) {
+                wordData[i].isTable = 1;
+            }
+        }
+    }
+    int ii = 0;
     for (auto i : bboxes) {
-        rectangle(image2, i, Scalar(0,0,255), 3, 8, 0);
+//        cout<<"Hello :)" << i <<endl;
+        bool isTable = wordData[ii].isTable;
+        ii++;
+
+        rectangle(imageRgb, i, isTable ? Scalar(0, 255, 0) : Scalar(0, 0, 255), 3, 8, 0);
+    }
+    for (auto i : tableBoxes) {
+        cout << i << endl;
+        rectangle(imageRgb, i, Scalar(255, 0, 0), 3, 8, 0);
     }
 
-
-    vector<Feature> featuresFile = findFeatures(words, bboxes, image.cols, image.rows);
 
 
     string withoutExtension = docproc::utility::getFileNameWithoutExtension(imageFileName);
-    string fileNameFeatures = withoutExtension + ".csv";
+    string fileNameFeatures = withoutExtension + ".json";
 
-    imwrite(withoutExtension+"_rects.png", image2);
+    imwrite(withoutExtension+"_rects.png", imageRgb);
     ofstream fileOutFeatures (fileNameFeatures);
-    fileOutFeatures << "word,left,top,right,bottom,width,height,previous,next,above,below"<<endl;
+    fileOutFeatures << "word,left,top,right,bottom,width,height,previous,next,above,below,is_table"<<endl;
 
-    int ii = 0;
-    for (auto i : featuresFile) {
-        fileOutFeatures << words[ii] << ',' << i.left << ',' << i.top << ',' << i.right<< ',' << i.bottom<< ',';
-        fileOutFeatures << i.width << ',' << i.height<< ','<< i.distancePrevX << ','<< i.distanceNextX<< ',';
-        fileOutFeatures << i.distanceAboveY<< ','<< i.distanceBelowY << endl;
+
+    Json::Value outFileWordData;
+
+    ii = 0;
+    for (auto i : wordData) {
+        Json::Value singleWordData;
+        singleWordData["word"] = words[ii];
+        singleWordData["left"] = i.left;
+        singleWordData["top"] = i.top;
+        singleWordData["right"] = i.right;
+        singleWordData["bottom"] = i.bottom;
+        singleWordData["width"] = i.width;
+        singleWordData["height"] = i.height;
+        singleWordData["prev"] = i.distancePrevX;
+        singleWordData["next"] = i.distanceNextX;
+        singleWordData["above"] = i.distanceAboveY;
+        singleWordData["below"] = i.distanceBelowY;
+        singleWordData["is_table"] = i.isTable;
+
+        outFileWordData[ii] = singleWordData;
+
         ii++;
     }
+
+    ofstream outStream(fileNameFeatures);
+    outStream << outFileWordData;
 
 
     return 0;
