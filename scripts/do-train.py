@@ -31,12 +31,14 @@ for i in ID_t:
     right = X_t[ii][2]
     bottom = X_t[ii][3]
     is_table = predictions[ii]
+    is_table_gt = np.argmax(Y_t[ii])
     word = {}
     word['left'] = float(left)
     word['top'] = float(top)
     word['right'] = float(right)
     word['bottom'] = float(bottom)
     word['is_table'] = float(is_table)
+    word['is_table_gt'] = float(is_table_gt)
 
     if not init:
         last_image.append(word)
@@ -51,8 +53,6 @@ for i in ID_t:
 
     last_image_id = i
     ii += 1
-
-# print(last_image)
 
 if len(last_image) != 0:
     with open(test_out_dir + '/' + last_image_id + '.json', 'w') as outfile:

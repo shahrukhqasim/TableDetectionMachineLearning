@@ -9,18 +9,12 @@
 #include <docproc/clean/clean.h>
 #include <docproc/utility/utility.h>
 #include <json/json/json.h>
+#include "helpers.h"
 
 using namespace std;
 using namespace cv;
 
 
-bool horizontalOverlap(Rect i, Rect j) {
-    return max(0, std::min(i.y + i.height, j.y + j.height) - std::max(i.y, j.y)) > 0;
-}
-
-bool verticalOverlap(Rect i, Rect j) {
-    return max(0, std::min(i.x + i.width, j.x + j.width) - std::max(i.x, j.x)) > 0;
-}
 
 struct WordData {
     double left;
@@ -33,7 +27,7 @@ struct WordData {
     double distanceNextX;
     double distanceAboveY;
     double distanceBelowY;
-    bool isTable = false;
+    bool isTable;
 };
 
 double scale(int max, int value) {
@@ -165,17 +159,14 @@ int main(int argc, char**argv) {
         Json::Value json;
         ifstream jsonStream(ocrFileName);
         jsonStream >> json;
-        cout<<json.size()<<endl;
         for (int i = 0 ; i < json.size(); i++) {
             Json::Value wordJson = json[i];
-//            cout<<wordJson.asString()<<endl;
             string word = wordJson["word"].asString();
             string left = wordJson["left"].asString();
             string top = wordJson["top"].asString();
             string right = wordJson["right"].asString();
             string bottom = wordJson["bottom"].asString();
 
-            cout<<word<<" "<<endl;
             int iLeft = stoi(left);
             int iTop = stoi(top);
             int iRight = stoi(right);
@@ -187,7 +178,6 @@ int main(int argc, char**argv) {
 
             words.push_back(word);
             bboxes.push_back(Rect(iLeft,iTop,iRight-iLeft,iBottom-iTop));
-//            cout<<"Hello :)" << Rect(iLeft,iTop,iRight-iLeft,iBottom-iTop) <<endl;
         }
     }
     std::vector<Rect> tableBoxes;
@@ -223,6 +213,7 @@ int main(int argc, char**argv) {
     for (int i = 0; i < words.size(); i++) {
         Rect rect = bboxes[i];
         for (auto j : tableBoxes) {
+            wordData[i].isTable = 0;
             if ((rect & j).area() > 0) {
                 wordData[i].isTable = 1;
             }
@@ -237,7 +228,6 @@ int main(int argc, char**argv) {
         rectangle(imageRgb, i, isTable ? Scalar(0, 255, 0) : Scalar(0, 0, 255), 3, 8, 0);
     }
     for (auto i : tableBoxes) {
-        cout << i << endl;
         rectangle(imageRgb, i, Scalar(255, 0, 0), 3, 8, 0);
     }
 
