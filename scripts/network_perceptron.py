@@ -7,13 +7,13 @@ from tensorflow.contrib import rnn
 tf.reset_default_graph()
 # Parameters
 learning_rate = 0.001
-training_epochs = 500
+training_epochs = 1000
 batch_size = 100
 display_step = training_epochs / 10
 
 # Network Parameters
-n_hidden_1 = 20  # 1st layer number of features
-n_hidden_2 = 5  # 2nd layer number of features
+n_hidden_1 = 100  # 1st layer number of features
+n_hidden_2 = 30  # 2nd layer number of features
 n_input = 10  # MNIST data input (img shape: 28*28)
 n_classes = 2  # MNIST total classes (0-9 digits
 
