@@ -72,6 +72,7 @@ def load_data(dir):
         else:
             X = np.append(X, x, axis=0)
             Y = np.append(Y, y, axis=0)
-            ID = ID + id
+
+        ID = ID + id
     print(np.shape(X), np.shape(Y))
     return X, Y, ID
